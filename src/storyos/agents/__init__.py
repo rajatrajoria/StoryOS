@@ -9,4 +9,5 @@ __all__ = [
     "registry",
     "ResearchAgent",
     "AngleAgent",
+    "OutlineAgent"
 ]

@@ -1,4 +1,5 @@
 from pprint import pprint
+import time
 
 from dotenv import load_dotenv
 
@@ -6,6 +7,7 @@ from storyos.agents.angle_agent import AngleAgent
 from storyos.agents.research_agent import ResearchAgent
 from storyos.artifacts import ChannelDNA
 from storyos.orchestrator import ModelClient, RunTrace
+from storyos.agents.outline_agent import OutlineAgent
 
 load_dotenv()
 
@@ -94,6 +96,10 @@ def main():
     # Angle
     # ------------------------------------------------------------------
 
+
+    time.sleep(10)  # <-- Simulate a delay before running the next agent
+
+    
     angle_agent = AngleAgent(
         client=client,
         trace=trace,
@@ -116,6 +122,48 @@ def main():
     print("ANGLE")
     print("=" * 80)
     pprint(angle.model_dump())
+
+    # ------------------------------------------------------------------
+    # Outline
+    # ------------------------------------------------------------------
+
+
+    time.sleep(10)  # <-- Simulate a delay before running the next agent
+
+    outline_agent = OutlineAgent(
+        client=client,
+        trace=trace,
+    )
+
+    print("\n")
+    print("=" * 80)
+    print("Running Outline Agent...")
+    print("=" * 80)
+
+    outline = outline_agent.run(
+        dossier=dossier,
+        angle=angle,
+        channel_dna=channel_dna,
+        target_word_count=target_word_count,
+    )
+
+    print("\n")
+
+    print("=" * 80)
+    print("OUTLINE")
+    print("=" * 80)
+    pprint(outline.model_dump())
+
+    print("\n")
+
+    print("=" * 80)
+    print("BEATS")
+    print("=" * 80)
+
+    for beat in outline.beats:
+        print(f"\nBeat {beat.order}")
+        print("-" * 40)
+        pprint(beat.model_dump())
 
     # ------------------------------------------------------------------
     # Trace

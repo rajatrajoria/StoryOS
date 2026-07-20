@@ -1,10 +1,14 @@
 from __future__ import annotations
+from typing import Any
 
-from traitlets import Any
-
-from storyos.artifacts import Angle, ChannelDNA, Dossier
-from parsers.angle_parser import AngleParser
-from storyos.prompts.angle_prompt import (
+from storyos.artifacts import (
+    Angle,
+    ChannelDNA,
+    Dossier,
+    Outline,
+)
+from parsers.outline_parser import OutlineParser
+from storyos.prompts.outline_prompt import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     build_user_prompt,
@@ -13,35 +17,36 @@ from storyos.prompts.angle_prompt import (
 from .base import Agent
 
 
-class AngleAgent(Agent):
+class OutlineAgent(Agent):
     """
-    StoryOS Angle Agent.
+    StoryOS Outline Agent.
 
-    The Angle Agent is responsible for selecting the single strongest
-    narrative direction for a video.
+    The Outline Agent transforms research and the selected narrative
+    angle into a complete story blueprint.
 
     Inputs
     ------
     - Dossier
+    - Angle
     - ChannelDNA
     - target_word_count
 
     Output
     ------
-    - Angle
+    - Outline
 
     Responsibilities
     ----------------
-    - Choose one compelling narrative angle.
-    - Ground the decision in the supplied research.
-    - Adapt to the channel's identity.
-    - Adapt the scope to the requested video length.
-    - Never invent facts.
+    - Design the narrative structure.
+    - Allocate story beats.
+    - Assign word budgets.
+    - Maintain narrative flow.
+    - Preserve factual traceability.
     """
 
     @property
     def name(self) -> str:
-        return "angle"
+        return "outline"
 
     @property
     def prompt_version(self) -> str:
@@ -59,16 +64,18 @@ class AngleAgent(Agent):
         self,
         *,
         dossier: Dossier,
+        angle: Angle,
         channel_dna: ChannelDNA,
         target_word_count: int,
         **_: Any,  # <-- Safely ignores unexpected execution kwargs
     ) -> str:
         """
-        Build the user prompt for the Angle Agent.
+        Build the user prompt for the Outline Agent.
         """
 
         return build_user_prompt(
             dossier=dossier.model_dump(mode="json"),
+            angle=angle.model_dump(mode="json"),
             channel_dna=channel_dna.model_dump(mode="json"),
             target_word_count=target_word_count,
         )
@@ -76,17 +83,19 @@ class AngleAgent(Agent):
     # ---------------------------------------------------------
     # Response Parsing
     # ---------------------------------------------------------
+
     def parse_response(
         self,
         response: str,
+        *,
         run_id: str | None = None,  # <-- Default fallback
         **_: Any,  # <-- Safely absorbs 'dossier', 'channel_dna', etc. passed by Agent.run()
-    ) -> Angle:
+    ) -> Outline:
         """
-        Parse the model response into a validated Angle artifact.
+        Parse the model response into an Outline artifact.
         """
         effective_run_id = run_id or self.trace.run_id
-        return AngleParser.parse(
-            response=response,
+        return OutlineParser.parse(
+            response,
             run_id=effective_run_id,
         )

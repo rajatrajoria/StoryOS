@@ -157,9 +157,18 @@ class ModelClient:
     """
 
     def __init__(self) -> None:
+        # Define automated retry behavior for transient Google API errors (503, 429, 500, etc.)
+        http_options = types.HttpOptions(
+            retry_options=types.HttpRetryOptions(
+                attempts=2,  # Increase total retry attempts
+                initial_delay=2.0,  # Wait 2 seconds before first retry
+                max_delay=60.0,  # Cap retry backoff at 60 seconds
+                http_status_codes=[429, 500, 502, 503, 504],
+            ),
+            timeout=120 * 1000,  # 120-second timeout per request
+        )
         # Initialize Google GenAI client
-        self._google = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
+        self._google = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options=http_options)
         # Initialize optional fallback clients if keys exist
         self._openai = OpenAI() if os.getenv("OPENAI_API_KEY") else None
         self._anthropic = (

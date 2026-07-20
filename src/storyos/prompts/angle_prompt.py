@@ -249,11 +249,9 @@ def build_user_prompt(
             "fact_id"
         ],
         "discarded_angles": [
-            {
-                "angle": "string",
-                "reason": "string",
-            }
-        ],
+            "String describing discarded angle 1",
+            "String describing discarded angle 2"
+        ]
     }
 
     return f"""
