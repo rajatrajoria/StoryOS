@@ -39,6 +39,11 @@ class CriticNote(BaseModel):
 class CriticReport(BaseArtifact):
     """
     Quality review produced by the Critic Agent.
+    The Critic must also verify:
+
+    - overall pacing
+    - total script length
+    - beat-level allocation
     """
 
     passed: bool = Field(

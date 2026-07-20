@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
-from src.storyos.agents.names import AgentName
+from .names import AgentName
 from storyos.orchestrator.model_client import (
     DEFAULT_MODEL_MAP,
     ModelClient,

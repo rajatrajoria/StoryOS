@@ -2,21 +2,23 @@
 Provider-agnostic LLM client.
 
 This module is the ONLY place in the codebase that knows about
-provider SDKs (OpenAI, Anthropic, etc.).
+provider SDKs (OpenAI, Anthropic, Google, etc.).
 
 Every agent communicates with models exclusively through ModelClient.
 """
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
 from anthropic import Anthropic
+from google import genai
+from google.genai import types
 from openai import OpenAI
-
 
 # ============================================================
 # Provider Enum
@@ -24,6 +26,8 @@ from openai import OpenAI
 
 
 class ModelProvider(StrEnum):
+    OPENROUTER = "openrouter"
+    GOOGLE = "google"
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
 
@@ -71,40 +75,41 @@ class ModelResponse:
 
 # ============================================================
 # Default Model Map
+# Using free Gemini models across all agents
 # ============================================================
 
 DEFAULT_MODEL_MAP: Final[dict[str, ModelConfig]] = {
     "research": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "angle": ModelConfig(
-        provider=ModelProvider.ANTHROPIC,
-        model="claude-sonnet-4-20250514",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "outline": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "draft": ModelConfig(
-        provider=ModelProvider.ANTHROPIC,
-        model="claude-sonnet-4-20250514",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "critic": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5-mini",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "fact_check": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "voice": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5-mini",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
     "visual": ModelConfig(
-        provider=ModelProvider.OPENAI,
-        model="gpt-5-mini",
+        provider=ModelProvider.GOOGLE,
+        model="gemini-flash-latest",
     ),
 }
 
@@ -115,6 +120,14 @@ DEFAULT_MODEL_MAP: Final[dict[str, ModelConfig]] = {
 # ============================================================
 
 _MODEL_PRICING: Final = {
+    "gemini-flash-latest": {
+        "input": 0.0,
+        "output": 0.0,
+    },
+    "gemini-2.5-pro": {
+        "input": 0.0,
+        "output": 0.0,
+    },
     "gpt-5": {
         "input": 1.25,
         "output": 10.00,
@@ -144,8 +157,14 @@ class ModelClient:
     """
 
     def __init__(self) -> None:
-        self._openai = OpenAI()
-        self._anthropic = Anthropic()
+        # Initialize Google GenAI client
+        self._google = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+        # Initialize optional fallback clients if keys exist
+        self._openai = OpenAI() if os.getenv("OPENAI_API_KEY") else None
+        self._anthropic = (
+            Anthropic() if os.getenv("ANTHROPIC_API_KEY") else None
+        )
 
     # --------------------------------------------------------
 
@@ -160,6 +179,14 @@ class ModelClient:
         """
         Execute a completion against the configured provider.
         """
+
+        if model_config.provider == ModelProvider.GOOGLE:
+            return self._complete_google(
+                system_prompt=system_prompt,
+                user_content=user_content,
+                model_config=model_config,
+                prompt_version=prompt_version,
+            )
 
         if model_config.provider == ModelProvider.OPENAI:
             return self._complete_openai(
@@ -183,6 +210,57 @@ class ModelClient:
 
     # --------------------------------------------------------
 
+    def _complete_google(
+        self,
+        *,
+        system_prompt: str,
+        user_content: str,
+        model_config: ModelConfig,
+        prompt_version: str,
+    ) -> ModelResponse:
+
+        start = time.perf_counter()
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=model_config.temperature,
+            max_output_tokens=model_config.max_tokens,
+        )
+
+        response = self._google.models.generate_content(
+            model=model_config.model,
+            contents=user_content,
+            config=config,
+        )
+
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        # Usage metadata parsing
+        usage = getattr(response, "usage_metadata", None)
+        input_tokens = usage.prompt_token_count if usage else 0
+        output_tokens = usage.candidates_token_count if usage else 0
+
+        cost = self._estimate_cost(
+            model=model_config.model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+
+        content = response.text or ""
+
+        return ModelResponse(
+            content=content,
+            provider=ModelProvider.GOOGLE,
+            model=model_config.model,
+            prompt_version=prompt_version,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+            estimated_cost_usd=cost,
+        )
+
+    # --------------------------------------------------------
+
     def _complete_openai(
         self,
         *,
@@ -191,6 +269,9 @@ class ModelClient:
         model_config: ModelConfig,
         prompt_version: str,
     ) -> ModelResponse:
+
+        if not self._openai:
+            raise RuntimeError("OPENAI_API_KEY environment variable is not set.")
 
         start = time.perf_counter()
 
@@ -246,6 +327,9 @@ class ModelClient:
         prompt_version: str,
     ) -> ModelResponse:
 
+        if not self._anthropic:
+            raise RuntimeError("ANTHROPIC_API_KEY environment variable is not set.")
+
         start = time.perf_counter()
 
         response = self._anthropic.messages.create(
@@ -272,7 +356,6 @@ class ModelClient:
             output_tokens=output_tokens,
         )
 
-        # Extract textual content cleanly
         content = ""
         if response.content and len(response.content) > 0:
             first_block = response.content[0]

@@ -2,6 +2,28 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from storyos.artifacts.base import BaseArtifact
 
+from enum import StrEnum
+
+
+class LengthMode(StrEnum):
+    DURATION = "duration_minutes"
+    WORD_COUNT = "word_count"
+
+
+class LengthRequest(BaseModel):
+    model_config = ConfigDict(
+        strict=True,
+        frozen=True,
+        extra="forbid",
+    )
+
+    mode: LengthMode
+
+    value: int = Field(
+        gt=0,
+        description="Original length requested by the user."
+    )
+
 
 class Specialist(BaseModel):
     """
@@ -57,3 +79,14 @@ class Plan(BaseArtifact):
     )
 
     artifact_type: str = "plan"
+
+    length_request: LengthRequest | None = Field(
+        default=None,
+        description="Original user length request."
+    )
+
+    target_word_count: int | None = Field(
+        default=None,
+        gt=0,
+        description="Normalized target word count used throughout the pipeline."
+    )

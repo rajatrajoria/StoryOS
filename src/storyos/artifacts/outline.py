@@ -40,6 +40,11 @@ class Beat(BaseModel):
         description="IDs of supporting facts from the Dossier.",
     )
 
+    target_word_count: int = Field(
+        gt=0,
+        description="Approximate word budget for this beat."
+    )
+
 
 class Outline(BaseArtifact):
     """

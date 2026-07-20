@@ -69,3 +69,13 @@ class ChannelDNA(BaseArtifact):
     )
 
     artifact_type: str = "channel_dna"
+
+    narration_wpm: int = Field(
+    default=145,
+    ge=80,
+    le=220,
+    description=(
+        "Default narration speed (words per minute) used when "
+        "converting requested duration into a target word count."
+    ),
+)
