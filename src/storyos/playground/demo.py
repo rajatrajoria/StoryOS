@@ -1,16 +1,13 @@
 from pprint import pprint
 
-from storyos.agents.research import ResearchAgent
+from dotenv import load_dotenv
+
+from storyos.agents.angle_agent import AngleAgent
+from storyos.agents.research_agent import ResearchAgent
 from storyos.artifacts import ChannelDNA
 from storyos.orchestrator import ModelClient, RunTrace
 
-from dotenv import load_dotenv
-
 load_dotenv()
-
-from openai import OpenAI
-
-client = OpenAI()
 
 
 def main():
@@ -36,9 +33,11 @@ def main():
         storytelling_principles=[
             "Story first",
             "Curiosity gap",
+            "Hook the audience",
+            "Surprise and delight",
         ],
         humor_principles=[
-            "Light humor",
+            "Heavy humor",
         ],
         writing_principles=[
             "Simple language",
@@ -56,18 +55,23 @@ def main():
         narration_wpm=145,
     )
 
-    agent = ResearchAgent(
+    target_word_count = 500
+
+    # ------------------------------------------------------------------
+    # Research
+    # ------------------------------------------------------------------
+
+    research_agent = ResearchAgent(
         client=client,
         trace=trace,
     )
 
     print("\nRunning Research Agent...\n")
 
-    dossier = agent.run(
+    dossier = research_agent.run(
         topic="Why airplanes fly",
         channel_dna=channel_dna,
-        target_word_count=1800,
-        run_id="run_001"
+        target_word_count=target_word_count,
     )
 
     print("=" * 80)
@@ -86,6 +90,37 @@ def main():
         print("-" * 40)
         pprint(fact.model_dump())
 
+    # ------------------------------------------------------------------
+    # Angle
+    # ------------------------------------------------------------------
+
+    angle_agent = AngleAgent(
+        client=client,
+        trace=trace,
+    )
+
+    print("\n")
+    print("=" * 80)
+    print("Running Angle Agent...")
+    print("=" * 80)
+
+    angle = angle_agent.run(
+        dossier=dossier,
+        channel_dna=channel_dna,
+        target_word_count=target_word_count,
+    )
+
+    print("\n")
+
+    print("=" * 80)
+    print("ANGLE")
+    print("=" * 80)
+    pprint(angle.model_dump())
+
+    # ------------------------------------------------------------------
+    # Trace
+    # ------------------------------------------------------------------
+
     print("\n")
 
     print("=" * 80)
@@ -93,6 +128,10 @@ def main():
     print("=" * 80)
 
     pprint(trace)
+
+    # ------------------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------------------
 
     print("\n")
 

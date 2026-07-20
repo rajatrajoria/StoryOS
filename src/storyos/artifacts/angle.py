@@ -29,3 +29,16 @@ class Angle(BaseArtifact):
     )
 
     artifact_type : str = "angle"
+
+    discarded_angles: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Brief descriptions of promising narrative angles that were "
+            "considered but rejected, including a short reason."
+        )
+    )
+
+    supporting_fact_refs: list[str] = Field(
+        default_factory=list,
+        description="References to the facts that support the chosen angle."
+    )

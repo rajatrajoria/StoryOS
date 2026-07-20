@@ -45,6 +45,10 @@ class Beat(BaseModel):
         description="Approximate word budget for this beat."
     )
 
+    transition_to_next: str = Field(
+        description="How this beat leads into the next beat.",
+    )
+
 
 class Outline(BaseArtifact):
     """

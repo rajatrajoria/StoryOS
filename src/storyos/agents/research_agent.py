@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from storyos.agents.base import Agent
-from storyos.agents.research.parser import ResearchParser
-from storyos.agents.research.prompts import (
+from parsers.research_parser import ResearchParser
+from storyos.prompts.research_prompt import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     build_user_prompt,
